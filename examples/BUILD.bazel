@@ -1,0 +1,56 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+
+cc_library(
+    name = "arithmetic",
+    srcs = ["arithmetic.cc"],
+    hdrs = ["arithmetic.h"],
+)
+
+cc_test(
+    name = "strong_test",
+    size = "small",
+    srcs = [
+        "arithmetic_test.cc",
+        ":generated_header",
+    ],
+    args = ["--gtest_filter=Arithmetic.*"],
+    data = ["fixture.txt"],
+    env = {"EXAMPLE_TEST_ENV": "forwarded"},
+    features = ["-mull"],
+    deps = [
+        ":arithmetic",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "weak_test",
+    size = "small",
+    srcs = [
+        "arithmetic_test.cc",
+        ":generated_header",
+    ],
+    args = ["--gtest_filter=Arithmetic.*"],
+    data = ["fixture.txt"],
+    defines = ["WEAK_ASSERTIONS"],
+    env = {"EXAMPLE_TEST_ENV": "forwarded"},
+    features = ["-mull"],
+    tags = ["manual"],
+    deps = [
+        ":arithmetic",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# A C++ build tool exercises the exec configuration: it must not enable Mull.
+cc_binary(
+    name = "header_generator",
+    srcs = ["header_generator.cc"],
+)
+
+genrule(
+    name = "generated_header",
+    outs = ["generated.h"],
+    cmd = "$(execpath :header_generator) > $@",
+    tools = [":header_generator"],
+)

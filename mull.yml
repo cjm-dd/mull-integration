@@ -1,0 +1,8 @@
+# Keep the example small and its expected results deterministic.
+mutators:
+  - cxx_add_to_sub
+includePaths:
+  - '(^|/)examples/'
+excludePaths:
+  - '(^|/)external/'
+  - '_test\.cc$'

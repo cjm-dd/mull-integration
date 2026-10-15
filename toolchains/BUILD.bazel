@@ -1,0 +1,88 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@rules_cc//cc/toolchains:args.bzl", "cc_args")
+load("@rules_cc//cc/toolchains:feature.bzl", "cc_feature")
+load(":runner.bzl", "mull_test_runner")
+
+package(default_visibility = ["//visibility:public"])
+
+bool_flag(
+    name = "enable_mull",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "enabled",
+    flag_values = {":enable_mull": "true"},
+)
+
+config_setting(
+    name = "disabled",
+    flag_values = {":enable_mull": "false"},
+)
+
+filegroup(
+    name = "mull_compiler_files",
+    srcs = [
+        "//:mull.yml",
+        "@mull//:compiler_files",
+    ],
+)
+
+filegroup(
+    name = "plugin",
+    srcs = ["@mull//:lib/mull-ir-frontend-19"],
+)
+
+cc_args(
+    name = "mull_args",
+    actions = [
+        "@rules_cc//cc/toolchains/actions:c_compile",
+        "@rules_cc//cc/toolchains/actions:cpp_compile",
+    ],
+    args = [
+        "-fpass-plugin={plugin}",
+        "-g",
+        "-grecord-command-line",
+        "-fprofile-instr-generate",
+        "-fcoverage-mapping",
+    ],
+    data = [":mull_compiler_files"],
+    env = {"MULL_CONFIG": "mull.yml"},
+    format = {"plugin": ":plugin"},
+)
+
+cc_args(
+    name = "mull_link_args",
+    actions = ["@rules_cc//cc/toolchains/actions:link_actions"],
+    args = ["-fprofile-instr-generate"],
+)
+
+cc_feature(
+    name = "mull",
+    args = [
+        ":mull_args",
+        ":mull_link_args",
+    ],
+    feature_name = "mull",
+)
+
+mull_test_runner(
+    name = "mull_runner",
+    config = "//:mull.yml",
+    runner = "@mull//:bin/mull-runner-19",
+)
+
+toolchain(
+    name = "mull_runner_toolchain",
+    exec_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_settings = [":enabled"],
+    toolchain = ":mull_runner",
+    toolchain_type = "@bazel_tools//tools/cpp:test_runner_toolchain_type",
+)

@@ -1,0 +1,47 @@
+module(
+    name = "mull_integration_example",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "googletest", version = "1.16.0")
+bazel_dep(name = "toolchains_llvm", version = "1.11.3")
+
+mull_installation = use_repo_rule("//toolchains:repositories.bzl", "mull_installation")
+
+mull_installation(name = "mull")
+
+llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
+llvm.toolchain(
+    name = "llvm",
+    llvm_version = "19.1.7",
+    stdlib = {"": "stdc++"},
+    target_settings = {"linux-x86_64": ["@@//toolchains:disabled"]},
+)
+llvm.toolchain_root(
+    name = "llvm",
+    path = "/usr/lib/llvm-19",
+)
+llvm.toolchain(
+    name = "llvm_mull",
+    extra_compile_flags = {"": ["-ffile-compilation-dir=/workspace"]},
+    # The feature bridge does not propagate cc_args.data automatically.
+    extra_compiler_files = "//toolchains:mull_compiler_files",
+    extra_enabled_features = ["//toolchains:mull"],
+    llvm_version = "19.1.7",
+    stdlib = {"": "stdc++"},
+    target_settings = {"linux-x86_64": ["@@//toolchains:enabled"]},
+)
+llvm.toolchain_root(
+    name = "llvm_mull",
+    path = "/usr/lib/llvm-19",
+)
+use_repo(llvm, "llvm", "llvm_mull")
+
+register_toolchains(
+    "@llvm_mull//:cc-toolchain-x86_64-linux",
+    "@llvm//:cc-toolchain-x86_64-linux",
+    "//toolchains:mull_runner_toolchain",
+)
